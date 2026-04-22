@@ -1,12 +1,14 @@
 import { useMarket } from '../../context/MarketContext.tsx';
 import { formatNumber } from '../../utils.ts';
 import { cn } from '../../utils.ts';
+import { PanelState } from '../ui/FeedbackStates.tsx';
 
 export default function OrderBook() {
   const { orderBook } = useMarket();
+  const hasRows = orderBook.asks.length > 0 || orderBook.bids.length > 0;
 
   return (
-    <div className="flex flex-col h-full overflow-hidden">
+    <div className="flex flex-col h-full overflow-hidden" aria-label="Order book">
       <div className="grid grid-cols-3 px-4 py-2 text-[10px] uppercase tracking-wider text-gray-500 font-bold border-b border-[#222]">
         <span>Price (USD)</span>
         <span className="text-right">Amount (BTC)</span>
@@ -14,6 +16,10 @@ export default function OrderBook() {
       </div>
 
       <div className="flex-1 overflow-y-auto scrollbar-hide py-1">
+        {!hasRows ? (
+          <PanelState title="Order book is empty" description="Bids and asks will appear as market activity starts." />
+        ) : (
+          <>
         {/* Asks (Sells) - Red */}
         <div className="flex flex-col-reverse">
           {orderBook.asks.map((ask, i) => (
@@ -60,6 +66,8 @@ export default function OrderBook() {
             </div>
           ))}
         </div>
+          </>
+        )}
       </div>
     </div>
   );

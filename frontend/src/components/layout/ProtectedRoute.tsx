@@ -7,9 +7,10 @@ export default function ProtectedRoute() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#050505] flex items-center justify-center">
-        <div className="relative">
-          <div className="w-12 h-12 rounded-full border-2 border-yellow-500/20 border-t-yellow-500 animate-spin"></div>
+      <div className="min-h-screen bg-[var(--bg-main)] flex items-center justify-center" role="status" aria-live="polite">
+        <div className="relative text-center">
+          <div className="w-12 h-12 rounded-full border-2 border-yellow-500/20 border-t-yellow-500 animate-spin mx-auto"></div>
+          <p className="mt-3 text-xs text-[var(--text-muted)] uppercase tracking-wider">Loading workspace</p>
         </div>
       </div>
     );
@@ -22,7 +23,7 @@ export default function ProtectedRoute() {
   return (
     <div className="min-h-screen bg-[#050505] text-white selection:bg-yellow-500/30 selection:text-yellow-500">
       <Navbar />
-      <main>
+      <main className="pb-20 md:pb-0">
         <Outlet />
       </main>
     </div>

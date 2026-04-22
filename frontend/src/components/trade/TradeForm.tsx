@@ -49,6 +49,7 @@ export default function TradeForm() {
     <div className="p-4 flex flex-col gap-4 h-full">
       <div className="grid grid-cols-2 gap-2 bg-[#222] p-1 rounded-lg">
         <button
+          type="button"
           onClick={() => setSide('buy')}
           className={cn(
             "py-2 rounded-md font-bold transition-all",
@@ -58,6 +59,7 @@ export default function TradeForm() {
           Buy
         </button>
         <button
+          type="button"
           onClick={() => setSide('sell')}
           className={cn(
             "py-2 rounded-md font-bold transition-all",
@@ -70,6 +72,7 @@ export default function TradeForm() {
 
       <div className="flex gap-4 border-b border-[#222]">
         <button
+          type="button"
           onClick={() => setOrderType('limit')}
           className={cn(
             "pb-2 text-sm font-medium transition-colors border-b-2",
@@ -79,6 +82,7 @@ export default function TradeForm() {
           Limit
         </button>
         <button
+          type="button"
           onClick={() => setOrderType('market')}
           className={cn(
             "pb-2 text-sm font-medium transition-colors border-b-2",
@@ -98,6 +102,7 @@ export default function TradeForm() {
                 type="number"
                 value={price}
                 onChange={(e) => setPrice(e.target.value)}
+                aria-label="Limit price in USD"
                 className="w-full bg-[#1a1a1a] border border-[#333] rounded-md px-3 py-2.5 text-sm font-mono focus:border-yellow-500/50 outline-none transition-colors"
                 placeholder="0.00"
                 step="0.01"
@@ -124,6 +129,7 @@ export default function TradeForm() {
               type="number"
               value={quantity}
               onChange={(e) => setQuantity(e.target.value)}
+              aria-label="Order amount in BTC"
               className="w-full bg-[#1a1a1a] border border-[#333] rounded-md px-3 py-2.5 text-sm font-mono focus:border-yellow-500/50 outline-none transition-colors"
               placeholder="0.0000"
               step="0.0001"

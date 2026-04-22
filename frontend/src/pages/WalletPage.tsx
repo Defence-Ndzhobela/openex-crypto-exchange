@@ -5,18 +5,31 @@ import { Transaction } from '../types.ts';
 import { Wallet, PlusCircle, History, ArrowDownToLine, ArrowUpFromLine, RefreshCcw, ShieldCheck } from 'lucide-react';
 import { formatCurrency, formatNumber, formatDate, cn } from '../utils.ts';
 import { motion } from 'motion/react';
+import { PanelState, RowsSkeleton } from '../components/ui/FeedbackStates.tsx';
 
 export default function WalletPage() {
   const { user, updateBalances } = useAuth();
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(false);
+  const [loadingTransactions, setLoadingTransactions] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    const fetchTransactions = async () => {
+  const fetchTransactions = async () => {
+    setLoadingTransactions(true);
+    setError(null);
+    try {
       const res = await mockApi.getTransactions();
       setTransactions(res.data);
-    };
+    } catch (err: any) {
+      setError(err.message || 'Failed to load transaction history');
+    } finally {
+      setLoadingTransactions(false);
+    }
+  };
+
+  useEffect(() => {
     fetchTransactions();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handleDeposit = async () => {
@@ -24,8 +37,7 @@ export default function WalletPage() {
     try {
       await mockApi.faucet();
       await updateBalances();
-      const res = await mockApi.getTransactions();
-      setTransactions(res.data);
+      await fetchTransactions();
     } catch (err) {
       console.error(err);
     } finally {
@@ -76,6 +88,7 @@ export default function WalletPage() {
 
           <div className="mt-12 flex gap-4 relative z-10">
             <button
+              type="button"
               onClick={handleDeposit}
               disabled={loading}
               className="flex items-center gap-2 bg-yellow-500 hover:bg-yellow-400 text-black px-6 py-3 rounded-xl font-bold transition-all disabled:opacity-50 active:scale-95 shadow-lg shadow-yellow-500/10"
@@ -83,7 +96,7 @@ export default function WalletPage() {
               {loading ? <RefreshCcw className="w-4 h-4 animate-spin" /> : <PlusCircle className="w-4 h-4" />}
               Get Free Test Coins
             </button>
-            <button className="flex items-center gap-2 bg-[#222] hover:bg-[#2a2a2a] text-white px-6 py-3 rounded-xl font-bold transition-all border border-[#333]">
+            <button type="button" className="flex items-center gap-2 bg-[#222] hover:bg-[#2a2a2a] text-white px-6 py-3 rounded-xl font-bold transition-all border border-[#333]">
               Withdraw Funds
             </button>
           </div>
@@ -106,12 +119,30 @@ export default function WalletPage() {
             <History className="w-5 h-5 text-gray-400" />
             <h2 className="text-lg font-bold text-white">Transaction History</h2>
           </div>
-          <button className="text-xs text-yellow-500 font-bold uppercase tracking-wider hover:underline transition-all">
+          <button type="button" className="text-xs text-yellow-500 font-bold uppercase tracking-wider hover:underline transition-all">
             Download CSV
           </button>
         </div>
 
         <div className="overflow-x-auto">
+          {loadingTransactions ? (
+            <RowsSkeleton rows={8} />
+          ) : error ? (
+            <PanelState
+              type="error"
+              title="Could not load transactions"
+              description={error}
+              action={
+                <button
+                  type="button"
+                  onClick={fetchTransactions}
+                  className="px-3 py-1.5 rounded-md text-xs font-semibold bg-red-500/15 text-red-300 hover:bg-red-500/20 transition-colors"
+                >
+                  Retry
+                </button>
+              }
+            />
+          ) : (
           <table className="w-full text-left">
             <thead className="bg-[#1a1a1a] text-[10px] uppercase font-bold text-gray-500 tracking-wider">
               <tr>
@@ -162,10 +193,9 @@ export default function WalletPage() {
               ))}
             </tbody>
           </table>
-          {transactions.length === 0 && (
-            <div className="py-20 text-center text-gray-600">
-                No transactions found
-            </div>
+          )}
+          {!loadingTransactions && !error && transactions.length === 0 && (
+            <PanelState title="No transactions yet" description="Your deposits and trade settlements will appear here." />
           )}
         </div>
       </div>

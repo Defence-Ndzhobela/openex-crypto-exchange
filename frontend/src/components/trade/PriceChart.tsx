@@ -12,6 +12,7 @@ import {
   ChartOptions,
 } from 'chart.js';
 import { Line } from 'react-chartjs-2';
+import { PanelState } from '../ui/FeedbackStates.tsx';
 
 ChartJS.register(
   CategoryScale,
@@ -31,6 +32,14 @@ interface PriceChartProps {
 }
 
 export default function PriceChart({ data, height = 400, showAxes = true }: PriceChartProps) {
+  if (!data || data.length === 0) {
+    return (
+      <div style={{ height }}>
+        <PanelState title="Waiting for price data" description="Market ticks will render the chart shortly." />
+      </div>
+    );
+  }
+
   const chartData = useMemo(() => ({
     labels: data.map((_, i) => i.toString()),
     datasets: [
@@ -72,7 +81,7 @@ export default function PriceChart({ data, height = 400, showAxes = true }: Pric
         display: showAxes,
         grid: { color: 'rgba(255, 255, 255, 0.05)' },
         ticks: {
-          color: '#888',
+          color: '#9a9a9a',
           font: { size: 10 },
           callback: (val) => `$${val.toLocaleString()}`,
         },
@@ -85,7 +94,7 @@ export default function PriceChart({ data, height = 400, showAxes = true }: Pric
   };
 
   return (
-    <div style={{ height }}>
+    <div style={{ height }} aria-label="BTC USD price chart">
       <Line data={chartData} options={options} />
     </div>
   );

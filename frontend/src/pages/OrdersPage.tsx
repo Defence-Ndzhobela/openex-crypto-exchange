@@ -1,19 +1,30 @@
 import { useState, useEffect } from 'react';
 import { mockApi } from '../services/api.ts';
 import { Order } from '../types.ts';
-import { ListTodo, Trash2, CheckCircle2, Clock, XCircle, Bitcoin } from 'lucide-react';
+import { ListTodo, Trash2, CheckCircle2, Bitcoin } from 'lucide-react';
 import { formatCurrency, formatNumber, formatDate } from '../utils.ts';
 import { cn } from '../utils.ts';
 import { motion } from 'motion/react';
+import { PanelState, RowsSkeleton } from '../components/ui/FeedbackStates.tsx';
 
 export default function OrdersPage() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [filter, setFilter] = useState<'all' | 'open' | 'completed'>('all');
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchOrders = async () => {
-      const res = await mockApi.getOrders();
-      setOrders(res.data);
+      setLoading(true);
+      setError(null);
+      try {
+        const res = await mockApi.getOrders();
+        setOrders(res.data);
+      } catch (err: any) {
+        setError(err.message || 'Failed to load order history');
+      } finally {
+        setLoading(false);
+      }
     };
     fetchOrders();
   }, []);
@@ -67,7 +78,25 @@ export default function OrdersPage() {
 
       <div className="bg-[#111] border border-[#222] rounded-2xl shadow-xl overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="w-full text-left">
+          {loading ? (
+            <RowsSkeleton rows={8} />
+          ) : error ? (
+            <PanelState
+              type="error"
+              title="Could not load orders"
+              description={error}
+              action={
+                <button
+                  type="button"
+                  onClick={() => window.location.reload()}
+                  className="px-3 py-1.5 rounded-md text-xs font-semibold bg-red-500/15 text-red-300 hover:bg-red-500/20 transition-colors"
+                >
+                  Refresh
+                </button>
+              }
+            />
+          ) : (
+          <table className="w-full text-left" aria-label="Orders table">
             <thead className="bg-[#1a1a1a] text-[10px] uppercase font-bold text-gray-500 tracking-wider">
               <tr>
                 <th className="px-8 py-5">Order ID</th>
@@ -134,7 +163,7 @@ export default function OrdersPage() {
                   </td>
                   <td className="px-8 py-5 text-right">
                     {order.status === 'open' ? (
-                      <button className="p-2 text-gray-500 hover:text-red-500 transition-colors rounded-lg hover:bg-red-500/10">
+                      <button type="button" aria-label={`Cancel order ${order.id}`} className="p-2 text-gray-500 hover:text-red-500 transition-colors rounded-lg hover:bg-red-500/10">
                         <Trash2 className="w-4 h-4" />
                       </button>
                     ) : (
@@ -148,11 +177,12 @@ export default function OrdersPage() {
               ))}
             </tbody>
           </table>
-          {filteredOrders.length === 0 && (
-            <div className="py-24 flex flex-col items-center justify-center text-gray-600">
-                <Clock className="w-12 h-12 mb-4 opacity-10" />
-                <p className="text-sm font-medium italic">No {filter !== 'all' ? filter : ''} orders matching your filters</p>
-            </div>
+          )}
+          {!loading && !error && filteredOrders.length === 0 && (
+            <PanelState
+              title="No orders found"
+              description={`No ${filter !== 'all' ? filter : ''} orders match your current filter.`}
+            />
           )}
         </div>
       </div>
