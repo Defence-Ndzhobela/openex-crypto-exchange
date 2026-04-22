@@ -40,6 +40,12 @@ export default function PriceChart({ data, height = 400, showAxes = true }: Pric
     );
   }
 
+  const latestPrice = data[data.length - 1];
+  const latestPriceLabel = `BTC/USD ${latestPrice.toLocaleString(undefined, {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  })}`;
+
   const chartData = useMemo(() => ({
     labels: data.map((_, i) => i.toString()),
     datasets: [
@@ -94,7 +100,10 @@ export default function PriceChart({ data, height = 400, showAxes = true }: Pric
   };
 
   return (
-    <div style={{ height }} aria-label="BTC USD price chart">
+    <div className="relative" style={{ height }} aria-label="BTC USD price chart">
+      <div className="absolute right-3 top-3 z-10 rounded-md border border-[#2d2d2d] bg-[#0e0e0e]/95 px-2 py-1 text-[11px] font-mono font-semibold text-green-400 shadow-lg">
+        {latestPriceLabel}
+      </div>
       <Line data={chartData} options={options} />
     </div>
   );

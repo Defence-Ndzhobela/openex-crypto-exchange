@@ -28,6 +28,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const login = async (credentials: any) => {
     const res = await mockApi.login(credentials);
     setUser(res.data.user);
+    if (res.data.token) {
+      localStorage.setItem('token', res.data.token);
+    }
+    localStorage.setItem('user', JSON.stringify(res.data.user));
   };
 
   const register = async (data: any) => {
