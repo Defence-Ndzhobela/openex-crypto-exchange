@@ -1,20 +1,29 @@
-<div align="center">
-<img width="1200" height="475" alt="GHBanner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
-</div>
+# OpenEx Frontend
 
-# Run and deploy your AI Studio app
+Frontend client for the OpenEx simulated crypto exchange.
 
-This contains everything you need to run your app locally.
+For full project architecture, sprint plan, observability strategy, and backend scope, see the repository README at the project root.
 
-View your app in AI Studio: https://ai.studio/apps/d41e47e2-c017-45b0-9070-05ac9c5e8117
+## Prerequisites
+
+- Node.js 18+
+- npm 9+
 
 ## Run Locally
 
-**Prerequisites:**  Node.js
+```bash
+npm install
+npm run dev
+```
 
+Default local URL:
 
-1. Install dependencies:
-   `npm install`
-2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
-3. Run the app:
-   `npm run dev`
+- http://localhost:3000
+
+## Scripts
+
+- `npm run dev` - start dev server
+- `npm run build` - create production build
+- `npm run preview` - preview production build
+- `npm run lint` - run TypeScript checks
+- `npm run clean` - remove dist output
