@@ -15,7 +15,7 @@ import java.util.stream.Collectors;
 public class CorsConfig {
 
     @Bean
-    public CorsFilter corsFilter(@Value("${openex.cors-origin-patterns:http://localhost:*,http://127.0.0.1:*}") String corsOriginPatterns) {
+    public CorsFilter corsFilter(@Value("${openex.cors-origin-patterns}") String corsOriginPatterns) {
         CorsConfiguration config = new CorsConfiguration();
         List<String> allowedOriginPatterns = Arrays.stream(corsOriginPatterns.split(","))
                 .map(String::trim)

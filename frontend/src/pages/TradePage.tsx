@@ -317,7 +317,7 @@ export default function TradePage() {
           <div className="flex-1 overflow-y-auto overflow-x-hidden border-b border-[#222]">
             <TradeForm />
           </div>
-          <div className="h-[280px] md:h-[300px] flex flex-col shrink-0">
+          <div className="h-[180px] md:h-[210px] flex flex-col shrink-0">
             <div className="px-4 py-3 border-b border-[#222] bg-[#111]">
                 <h4 className="text-[10px] uppercase tracking-widest font-bold text-gray-400">Market Trades</h4>
             </div>
