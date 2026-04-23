@@ -1,14 +1,53 @@
+import { useEffect, useMemo, useState } from 'react';
 import { useAuth } from '../context/AuthContext.tsx';
 import { useMarket } from '../context/MarketContext.tsx';
 import PriceChart from '../components/trade/PriceChart.tsx';
 import TradeFeed from '../components/trade/TradeFeed.tsx';
-import { Bitcoin, Wallet, ArrowUpRight, ArrowDownLeft, TrendingUp } from 'lucide-react';
+import { Bitcoin, Wallet, ArrowUpRight, TrendingUp, ListTodo } from 'lucide-react';
 import { formatCurrency, formatNumber } from '../utils.ts';
 import { motion } from 'motion/react';
+import { mockApi } from '../services/api.ts';
+import { Order, Transaction } from '../types.ts';
+import { Link } from 'react-router-dom';
 
 export default function DashboardPage() {
   const { user } = useAuth();
   const { btcPrice, priceHistory } = useMarket();
+  const [orders, setOrders] = useState<Order[]>([]);
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
+
+  useEffect(() => {
+    const loadSummary = async () => {
+      try {
+        const [ordersRes, txRes] = await Promise.all([
+          mockApi.getOrders(),
+          mockApi.getTransactions(),
+        ]);
+        setOrders(ordersRes.data || []);
+        setTransactions(txRes.data || []);
+      } catch {
+        setOrders([]);
+        setTransactions([]);
+      }
+    };
+
+    loadSummary();
+  }, []);
+
+  const summary = useMemo(() => {
+    const openOrders = orders.filter((order) => order.status === 'open');
+    const closedOrders = orders.filter((order) => order.status === 'closed');
+    const recentTrades = transactions
+      .filter((tx) => tx.type === 'trade')
+      .sort((a, b) => b.timestamp - a.timestamp)
+      .slice(0, 3);
+
+    return {
+      openOrdersCount: openOrders.length,
+      closedOrdersCount: closedOrders.length,
+      recentTrades,
+    };
+  }, [orders, transactions]);
 
   if (!user) return null;
 
@@ -61,6 +100,55 @@ export default function DashboardPage() {
           </div>
 
           <div className="bg-[#111] border border-[#222] rounded-2xl p-6 shadow-xl">
+            <div className="flex items-center justify-between mb-5">
+              <div className="flex items-center gap-2">
+                <div className="p-2 bg-blue-500/10 rounded-lg">
+                  <ListTodo className="w-4 h-4 text-blue-400" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-white">Quick Summary</h3>
+                  <p className="text-xs text-gray-500">Recent trades and open orders</p>
+                </div>
+              </div>
+              <Link to="/orders" className="text-xs text-yellow-500 font-bold uppercase tracking-wider hover:underline">
+                View all
+              </Link>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4 mb-5">
+              <div className="bg-[#1a1a1a] border border-[#2b2b2b] rounded-xl p-4">
+                <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest">Open Orders</p>
+                <p className="text-2xl font-black text-white mt-1">{summary.openOrdersCount}</p>
+              </div>
+              <div className="bg-[#1a1a1a] border border-[#2b2b2b] rounded-xl p-4">
+                <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest">Closed Orders</p>
+                <p className="text-2xl font-black text-white mt-1">{summary.closedOrdersCount}</p>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest">Recent Trades</p>
+              {summary.recentTrades.length > 0 ? (
+                summary.recentTrades.map((trade) => (
+                  <div key={trade.id} className="flex items-center justify-between bg-[#1a1a1a] border border-[#2b2b2b] rounded-lg px-3 py-2">
+                    <div>
+                      <p className="text-xs font-semibold text-white">{trade.description}</p>
+                      <p className="text-[11px] text-gray-500">{new Date(trade.timestamp).toLocaleTimeString()}</p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-xs font-mono text-gray-200">{formatNumber(trade.amount, trade.asset === 'BTC' ? 4 : 2)} {trade.asset}</p>
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <div className="bg-[#1a1a1a] border border-[#2b2b2b] rounded-lg px-3 py-3 text-xs text-gray-500">
+                  No recent trades yet.
+                </div>
+              )}
+            </div>
+          </div>
+
+          <div className="bg-[#111] border border-[#222] rounded-2xl p-6 shadow-xl">
             <div className="flex justify-between items-center mb-6">
               <div className="flex items-center gap-2">
                 <div className="p-2 bg-yellow-500/10 rounded-lg">
@@ -97,7 +185,7 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          <div className="bg-yellow-500 rounded-2xl p-6 flex flex-col justify-between h-[120px] shadow-lg shadow-yellow-500/10 hover:shadow-yellow-500/20 transition-all cursor-pointer group">
+          <Link to="/trade" className="block bg-yellow-500 rounded-2xl p-6 h-[120px] shadow-lg shadow-yellow-500/10 hover:shadow-yellow-500/20 transition-all cursor-pointer group">
             <div className="flex justify-between items-start">
               <h3 className="font-bold text-black uppercase tracking-widest text-xs">Ready to trade?</h3>
               <div className="bg-black/10 rounded-full p-2 group-hover:rotate-12 transition-transform">
@@ -105,7 +193,7 @@ export default function DashboardPage() {
               </div>
             </div>
             <div className="text-2xl font-black text-black italic uppercase">Go to Exchange</div>
-          </div>
+          </Link>
         </div>
       </motion.div>
     </div>

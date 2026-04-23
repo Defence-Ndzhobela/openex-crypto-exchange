@@ -14,8 +14,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
-import java.security.SecureRandom;
-import java.util.Base64;
 import java.util.Map;
 import java.util.Optional;
 
@@ -25,7 +23,6 @@ public class AuthService {
     private final UserRepository userRepository;
     private final WalletRepository walletRepository;
     private final BCryptPasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
-    private final SecureRandom secureRandom = new SecureRandom();
 
     public AuthService(UserRepository userRepository, WalletRepository walletRepository) {
         this.userRepository = userRepository;
@@ -55,7 +52,7 @@ public class AuthService {
         userRepository.ensureWalletRows(user.id());
         Map<String, Double> balances = walletRepository.getBalances(user.id());
 
-        return new AuthResponse(generateToken(), new AuthUserResponse(
+        return new AuthResponse(generateToken(user.id()), new AuthUserResponse(
                 user.id(),
                 user.displayName(),
                 user.email(),
@@ -73,7 +70,7 @@ public class AuthService {
 
         Map<String, Double> balances = walletRepository.getBalances(user.id());
 
-        return new AuthResponse(generateToken(), new AuthUserResponse(
+        return new AuthResponse(generateToken(user.id()), new AuthUserResponse(
                 user.id(),
                 user.displayName(),
                 user.email(),
@@ -81,9 +78,8 @@ public class AuthService {
         ));
     }
 
-    private String generateToken() {
-        byte[] bytes = new byte[32];
-        secureRandom.nextBytes(bytes);
-        return Base64.getUrlEncoder().withoutPadding().encodeToString(bytes);
+    private String generateToken(java.util.UUID userId) {
+        // For the learning simulation, token is user ID so downstream services can identify the user.
+        return userId.toString();
     }
 }

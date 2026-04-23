@@ -1,15 +1,21 @@
 import { useState, useEffect } from 'react';
 import { mockApi } from '../services/api.ts';
 import { Order } from '../types.ts';
+import { useMarket } from '../context/MarketContext.tsx';
+import { useAuth } from '../context/AuthContext.tsx';
 import { ListTodo, Trash2, CheckCircle2, Bitcoin } from 'lucide-react';
 import { formatCurrency, formatNumber, formatDate } from '../utils.ts';
 import { cn } from '../utils.ts';
 import { motion } from 'motion/react';
 import { PanelState, RowsSkeleton } from '../components/ui/FeedbackStates.tsx';
 
+const CLOSED_PROFIT_STORAGE_KEY = 'openex_closed_profit_by_order_id';
+
 export default function OrdersPage() {
+  const { btcPrice } = useMarket();
+  const { updateBalances } = useAuth();
   const [orders, setOrders] = useState<Order[]>([]);
-  const [filter, setFilter] = useState<'all' | 'open' | 'completed'>('all');
+  const [filter, setFilter] = useState<'all' | 'open' | 'closed'>('all');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -31,8 +37,36 @@ export default function OrdersPage() {
 
   const filteredOrders = orders.filter(o => {
     if (filter === 'all') return true;
-    return o.status === filter;
+    if (filter === 'open') return o.status === 'open';
+    return o.status === 'closed';
   });
+
+  const handleCancelOrder = async (orderId: string) => {
+    const closingOrder = orders.find((order) => order.id === orderId);
+    const closingProfit = closingOrder
+      ? ((closingOrder.side === 'buy' ? (btcPrice - closingOrder.price) : (closingOrder.price - btcPrice)) * closingOrder.quantity)
+      : 0;
+
+    try {
+      await mockApi.cancelOrder(orderId);
+      await mockApi.settleOrderPnl(orderId, closingProfit, btcPrice);
+      setOrders((prev) => prev.map((order) =>
+        order.id === orderId ? { ...order, status: 'closed' as const } : order
+      ));
+      await updateBalances();
+
+      try {
+        const raw = localStorage.getItem(CLOSED_PROFIT_STORAGE_KEY);
+        const current = raw ? JSON.parse(raw) : {};
+        const next = { ...(current && typeof current === 'object' ? current : {}), [orderId]: closingProfit };
+        localStorage.setItem(CLOSED_PROFIT_STORAGE_KEY, JSON.stringify(next));
+      } catch {
+        // Ignore localStorage errors and still proceed with cancel flow.
+      }
+    } catch (err: any) {
+      setError(err.message || 'Failed to cancel order');
+    }
+  };
 
   return (
     <div className="max-w-screen-xl mx-auto px-4 lg:px-6 py-8">
@@ -65,13 +99,13 @@ export default function OrdersPage() {
             Open
           </button>
           <button
-            onClick={() => setFilter('completed')}
+            onClick={() => setFilter('closed')}
             className={cn(
               "px-6 py-2 rounded-lg text-xs font-bold uppercase tracking-wider transition-all",
-              filter === 'completed' ? "bg-[#222] text-white shadow-lg" : "text-gray-500 hover:text-gray-300"
+              filter === 'closed' ? "bg-[#222] text-white shadow-lg" : "text-gray-500 hover:text-gray-300"
             )}
           >
-            Completed
+            Closed
           </button>
         </div>
       </div>
@@ -163,13 +197,18 @@ export default function OrdersPage() {
                   </td>
                   <td className="px-8 py-5 text-right">
                     {order.status === 'open' ? (
-                      <button type="button" aria-label={`Cancel order ${order.id}`} className="p-2 text-gray-500 hover:text-red-500 transition-colors rounded-lg hover:bg-red-500/10">
+                      <button
+                        type="button"
+                        aria-label={`Cancel order ${order.id}`}
+                        onClick={() => handleCancelOrder(order.id)}
+                        className="p-2 text-gray-500 hover:text-red-500 transition-colors rounded-lg hover:bg-red-500/10"
+                      >
                         <Trash2 className="w-4 h-4" />
                       </button>
                     ) : (
-                      <div className="flex items-center justify-end text-green-500 gap-1.5 opacity-60">
+                      <div className="flex items-center justify-end gap-1.5 text-green-500 opacity-70">
                         <CheckCircle2 className="w-4 h-4" />
-                        <span className="text-[10px] font-bold uppercase tracking-widest">Filled</span>
+                        <span className="text-[10px] font-bold uppercase tracking-widest">Closed</span>
                       </div>
                     )}
                   </td>

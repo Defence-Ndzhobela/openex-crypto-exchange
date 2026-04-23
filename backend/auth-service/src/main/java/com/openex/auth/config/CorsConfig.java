@@ -7,15 +7,22 @@ import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 import org.springframework.web.filter.CorsFilter;
 
+import java.util.Arrays;
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Configuration
 public class CorsConfig {
 
     @Bean
-    public CorsFilter corsFilter(@Value("${openex.cors-origin:http://localhost:3000}") String corsOrigin) {
+    public CorsFilter corsFilter(@Value("${openex.cors-origin-patterns:http://localhost:*,http://127.0.0.1:*}") String corsOriginPatterns) {
         CorsConfiguration config = new CorsConfiguration();
-        config.setAllowedOrigins(List.of(corsOrigin));
+        List<String> allowedOriginPatterns = Arrays.stream(corsOriginPatterns.split(","))
+                .map(String::trim)
+                .filter(s -> !s.isEmpty())
+                .collect(Collectors.toList());
+
+        config.setAllowedOriginPatterns(allowedOriginPatterns);
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
         config.setAllowedHeaders(List.of("*"));
         config.setAllowCredentials(true);

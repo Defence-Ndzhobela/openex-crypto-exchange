@@ -23,7 +23,7 @@ export interface Order {
   remaining: number;
   side: 'buy' | 'sell';
   type: 'market' | 'limit';
-  status: 'open' | 'completed' | 'cancelled';
+  status: 'open' | 'closed';
   timestamp: number;
 }
 
@@ -47,5 +47,16 @@ export interface Transaction {
   description: string;
 }
 
-export const API_BASE_URL = 'http://localhost:8080/api';
-export const WS_BASE_URL = 'ws://localhost:8080/ws/market';
+export interface PaymentMethod {
+  id: string;
+  cardLast4: string;
+  expiry: string;
+  cardholderName: string;
+  street: string;
+  city: string;
+  postalCode: string;
+  createdAt: number;
+}
+
+export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8081/api';
+export const WS_BASE_URL = import.meta.env.VITE_WS_BASE_URL || 'ws://localhost:8081/ws/market';

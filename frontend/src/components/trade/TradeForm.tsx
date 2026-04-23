@@ -23,6 +23,17 @@ export default function TradeForm() {
   const handleTrade = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user) return;
+
+    const quantityValue = parseFloat(quantity);
+    if (!Number.isFinite(quantityValue) || quantityValue <= 0) {
+      setMessage({ type: 'error', text: 'Amount must be greater than 0' });
+      return;
+    }
+
+    if (side === 'sell' && quantityValue > (user?.balances?.BTC || 0)) {
+      setMessage({ type: 'error', text: 'Sell amount exceeds available BTC balance' });
+      return;
+    }
     
     setLoading(true);
     setMessage(null);
@@ -32,7 +43,7 @@ export default function TradeForm() {
         side,
         type: orderType,
         price: orderType === 'market' ? btcPrice : parseFloat(price),
-        quantity: parseFloat(quantity),
+        quantity: quantityValue,
       });
       
       setMessage({ type: 'success', text: 'Order placed successfully!' });

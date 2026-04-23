@@ -1,0 +1,147 @@
+-- WARNING: This schema is for context only and is not meant to be run.
+-- Table order and constraints may not be valid for execution.
+
+CREATE TABLE public.api_idempotency_keys (
+  user_id uuid NOT NULL,
+  idem_key character varying NOT NULL,
+  endpoint character varying NOT NULL,
+  request_hash text NOT NULL,
+  response_code integer,
+  response_body jsonb,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  expires_at timestamp with time zone NOT NULL,
+  CONSTRAINT api_idempotency_keys_pkey PRIMARY KEY (user_id, idem_key, endpoint),
+  CONSTRAINT api_idempotency_keys_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id)
+);
+CREATE TABLE public.ledger_entries (
+  id bigint NOT NULL DEFAULT nextval('ledger_entries_id_seq'::regclass),
+  event_id uuid NOT NULL UNIQUE,
+  user_id uuid NOT NULL,
+  asset_code character varying NOT NULL,
+  entry_type USER-DEFINED NOT NULL,
+  amount numeric NOT NULL,
+  balance_after numeric,
+  reference_type character varying NOT NULL,
+  reference_id uuid,
+  metadata jsonb NOT NULL DEFAULT '{}'::jsonb,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT ledger_entries_pkey PRIMARY KEY (id),
+  CONSTRAINT ledger_entries_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id)
+);
+CREATE TABLE public.market_ticks (
+  id bigint NOT NULL DEFAULT nextval('market_ticks_id_seq'::regclass),
+  symbol character varying NOT NULL,
+  last_price numeric NOT NULL CHECK (last_price > 0::numeric),
+  best_bid numeric,
+  best_ask numeric,
+  source character varying NOT NULL DEFAULT 'SIMULATOR'::character varying,
+  tick_time timestamp with time zone NOT NULL,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT market_ticks_pkey PRIMARY KEY (id),
+  CONSTRAINT market_ticks_symbol_fkey FOREIGN KEY (symbol) REFERENCES public.trading_pairs(symbol)
+);
+CREATE TABLE public.order_fills (
+  id bigint NOT NULL DEFAULT nextval('order_fills_id_seq'::regclass),
+  order_id uuid NOT NULL,
+  trade_id uuid NOT NULL,
+  role USER-DEFINED NOT NULL,
+  fee_asset character varying,
+  fee_amount numeric NOT NULL DEFAULT 0 CHECK (fee_amount >= 0::numeric),
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT order_fills_pkey PRIMARY KEY (id),
+  CONSTRAINT order_fills_order_id_fkey FOREIGN KEY (order_id) REFERENCES public.orders(id),
+  CONSTRAINT order_fills_trade_id_fkey FOREIGN KEY (trade_id) REFERENCES public.trades(id)
+);
+CREATE TABLE public.orders (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  user_id uuid NOT NULL,
+  symbol character varying NOT NULL,
+  side USER-DEFINED NOT NULL,
+  order_type USER-DEFINED NOT NULL,
+  tif USER-DEFINED NOT NULL DEFAULT 'GTC'::time_in_force,
+  status USER-DEFINED NOT NULL DEFAULT 'OPEN'::order_status,
+  price numeric,
+  quantity numeric NOT NULL CHECK (quantity > 0::numeric),
+  filled_qty numeric NOT NULL DEFAULT 0 CHECK (filled_qty >= 0::numeric),
+  remaining_qty numeric NOT NULL CHECK (remaining_qty >= 0::numeric),
+  locked_asset character varying,
+  locked_amount numeric NOT NULL DEFAULT 0 CHECK (locked_amount >= 0::numeric),
+  idempotency_key character varying,
+  client_order_id character varying,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  updated_at timestamp with time zone NOT NULL DEFAULT now(),
+  canceled_at timestamp with time zone,
+  CONSTRAINT orders_pkey PRIMARY KEY (id),
+  CONSTRAINT orders_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id),
+  CONSTRAINT orders_symbol_fkey FOREIGN KEY (symbol) REFERENCES public.trading_pairs(symbol)
+);
+CREATE TABLE public.outbox_events (
+  id bigint NOT NULL DEFAULT nextval('outbox_events_id_seq'::regclass),
+  event_type character varying NOT NULL,
+  aggregate_type character varying NOT NULL,
+  aggregate_id uuid,
+  payload jsonb NOT NULL,
+  published boolean NOT NULL DEFAULT false,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  published_at timestamp with time zone,
+  CONSTRAINT outbox_events_pkey PRIMARY KEY (id)
+);
+CREATE TABLE public.refresh_tokens (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  user_id uuid NOT NULL,
+  token_hash text NOT NULL UNIQUE,
+  expires_at timestamp with time zone NOT NULL,
+  revoked_at timestamp with time zone,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT refresh_tokens_pkey PRIMARY KEY (id),
+  CONSTRAINT refresh_tokens_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id)
+);
+CREATE TABLE public.trades (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  symbol character varying NOT NULL,
+  price numeric NOT NULL CHECK (price > 0::numeric),
+  quantity numeric NOT NULL CHECK (quantity > 0::numeric),
+  maker_order_id uuid NOT NULL,
+  taker_order_id uuid NOT NULL,
+  maker_user_id uuid NOT NULL,
+  taker_user_id uuid NOT NULL,
+  match_seq bigint,
+  metadata jsonb NOT NULL DEFAULT '{}'::jsonb,
+  matched_at timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT trades_pkey PRIMARY KEY (id),
+  CONSTRAINT trades_symbol_fkey FOREIGN KEY (symbol) REFERENCES public.trading_pairs(symbol),
+  CONSTRAINT trades_maker_order_id_fkey FOREIGN KEY (maker_order_id) REFERENCES public.orders(id),
+  CONSTRAINT trades_taker_order_id_fkey FOREIGN KEY (taker_order_id) REFERENCES public.orders(id),
+  CONSTRAINT trades_maker_user_id_fkey FOREIGN KEY (maker_user_id) REFERENCES public.users(id),
+  CONSTRAINT trades_taker_user_id_fkey FOREIGN KEY (taker_user_id) REFERENCES public.users(id)
+);
+CREATE TABLE public.trading_pairs (
+  symbol character varying NOT NULL,
+  base_asset character varying NOT NULL,
+  quote_asset character varying NOT NULL,
+  tick_size numeric NOT NULL CHECK (tick_size > 0::numeric),
+  lot_size numeric NOT NULL CHECK (lot_size > 0::numeric),
+  min_order_qty numeric NOT NULL CHECK (min_order_qty > 0::numeric),
+  active boolean NOT NULL DEFAULT true,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT trading_pairs_pkey PRIMARY KEY (symbol)
+);
+CREATE TABLE public.users (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  email USER-DEFINED NOT NULL UNIQUE,
+  password_hash text NOT NULL,
+  display_name text NOT NULL,
+  is_admin boolean NOT NULL DEFAULT false,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  updated_at timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT users_pkey PRIMARY KEY (id)
+);
+CREATE TABLE public.wallet_balances (
+  user_id uuid NOT NULL,
+  asset_code character varying NOT NULL,
+  available numeric NOT NULL DEFAULT 0 CHECK (available >= 0::numeric),
+  locked numeric NOT NULL DEFAULT 0 CHECK (locked >= 0::numeric),
+  updated_at timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT wallet_balances_pkey PRIMARY KEY (user_id, asset_code),
+  CONSTRAINT wallet_balances_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id)
+);
