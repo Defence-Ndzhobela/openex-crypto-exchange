@@ -27,41 +27,51 @@ export function MarketProvider({ children }: { children: React.ReactNode }) {
         const change = (Math.random() - 0.5) * 50;
         const newPrice = prev + change;
         setPriceHistory(h => [...h.slice(-49), newPrice]);
+
+        // New trade uses the freshest computed price.
+        const side = Math.random() > 0.5 ? 'buy' : 'sell';
+        const newTrade: Trade = {
+          id: Math.random().toString(36).substr(2, 9),
+          price: newPrice + (Math.random() - 0.5) * 10,
+          quantity: Math.random() * 0.5,
+          side,
+          timestamp: Date.now()
+        };
+        setRecentTrades(prevTrades => [newTrade, ...prevTrades.slice(0, 19)]);
+
+        // Order book simulation derived from the same newest price.
+        const bids = Array.from({ length: 15 }).map((_, i) => ({
+          price: newPrice - (i + 1) * 2,
+          quantity: Math.random() * 2,
+          total: 0
+        })).map((b, i, arr) => ({ ...b, total: arr.slice(0, i + 1).reduce((acc, curr) => acc + curr.quantity, 0) }));
+
+        const asks = Array.from({ length: 15 }).map((_, i) => ({
+          price: newPrice + (i + 1) * 2,
+          quantity: Math.random() * 2,
+          total: 0
+        })).map((a, i, arr) => ({ ...a, total: arr.slice(0, i + 1).reduce((acc, curr) => acc + curr.quantity, 0) }));
+
+        setOrderBook({ bids, asks });
         return newPrice;
       });
-
-      // New trade
-      const side = Math.random() > 0.5 ? 'buy' : 'sell';
-      const newTrade: Trade = {
-        id: Math.random().toString(36).substr(2, 9),
-        price: btcPrice + (Math.random() - 0.5) * 10,
-        quantity: Math.random() * 0.5,
-        side,
-        timestamp: Date.now()
-      };
-      setRecentTrades(prev => [newTrade, ...prev.slice(0, 19)]);
-
-      // Order book simulation
-      const bids = Array.from({ length: 15 }).map((_, i) => ({
-        price: btcPrice - (i + 1) * 2,
-        quantity: Math.random() * 2,
-        total: 0
-      })).map((b, i, arr) => ({ ...b, total: arr.slice(0, i + 1).reduce((acc, curr) => acc + curr.quantity, 0) }));
-
-      const asks = Array.from({ length: 15 }).map((_, i) => ({
-        price: btcPrice + (i + 1) * 2,
-        quantity: Math.random() * 2,
-        total: 0
-      })).map((a, i, arr) => ({ ...a, total: arr.slice(0, i + 1).reduce((acc, curr) => acc + curr.quantity, 0) }));
-
-      setOrderBook({ bids, asks });
     }, 1000);
 
     return () => clearInterval(interval);
-  }, [btcPrice]);
+  }, []);
 
   useEffect(() => {
-    // Try to connect to real WS
+    let cleanupSim: (() => void) | null = null;
+
+    if (!WS_BASE_URL) {
+      setIsConnected(false);
+      cleanupSim = simulateMarket();
+      return () => {
+        if (cleanupSim) cleanupSim();
+      };
+    }
+
+    // Try to connect to real WS once; fallback simulation if unavailable.
     const socket = new WebSocket(WS_BASE_URL);
     socketRef.current = socket;
 
@@ -82,19 +92,23 @@ export function MarketProvider({ children }: { children: React.ReactNode }) {
     };
 
     socket.onerror = () => {
-      console.log('WS Connection error, falling back to simulation');
+      if (!cleanupSim) {
+        console.log('WS Connection error, falling back to simulation');
+        cleanupSim = simulateMarket();
+      }
       setIsConnected(false);
     };
 
     socket.onclose = () => {
+      if (!cleanupSim) {
+        cleanupSim = simulateMarket();
+      }
       setIsConnected(false);
     };
 
-    const cleanupSim = simulateMarket();
-
     return () => {
       socket.close();
-      cleanupSim();
+      if (cleanupSim) cleanupSim();
     };
   }, [simulateMarket]);
 
