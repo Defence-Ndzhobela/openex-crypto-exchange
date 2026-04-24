@@ -60,11 +60,19 @@ const callApiWithFallback = async <T>(
   }
 };
 
-// Auth now uses the Spring Boot backend + Supabase DB.
-// Other modules stay mocked until their backend services are implemented.
-const USE_REAL_AUTH = true;
-const USE_REAL_WALLET = true;
-const USE_REAL_ORDERS = true;
+const envFlag = (value: unknown, defaultValue: boolean): boolean => {
+  if (typeof value !== 'string') return defaultValue;
+  const normalized = value.trim().toLowerCase();
+  if (normalized === 'true') return true;
+  if (normalized === 'false') return false;
+  return defaultValue;
+};
+
+// Runtime toggles for demos and temporary production bypass.
+const FORCE_MOCK_API = envFlag(import.meta.env.VITE_FORCE_MOCK_API, false);
+const USE_REAL_AUTH = !FORCE_MOCK_API && envFlag(import.meta.env.VITE_USE_REAL_AUTH, true);
+const USE_REAL_WALLET = !FORCE_MOCK_API && envFlag(import.meta.env.VITE_USE_REAL_WALLET, true);
+const USE_REAL_ORDERS = !FORCE_MOCK_API && envFlag(import.meta.env.VITE_USE_REAL_ORDERS, true);
 
 export const mockApi = {
   login: async (credentials: any) => {
